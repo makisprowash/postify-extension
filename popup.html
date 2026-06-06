@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Postify</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; width: 340px; background: #f8f9fb; color: #1a1a2e; }
+
+    .header { background: white; padding: 14px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #e5e7eb; }
+    .logo { width: 32px; height: 32px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px; }
+    .logo-text { font-size: 16px; font-weight: 600; color: #1a1a2e; }
+    .logo-sub { font-size: 11px; color: #6b7280; }
+
+    .body { padding: 14px; }
+
+    .status-card { background: white; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; border: 1px solid #e5e7eb; }
+    .status-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-green { background: #22c55e; }
+    .dot-gray { background: #9ca3af; }
+    .dot-amber { animation: pulse 1s infinite; background: #f59e0b; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    .vehicle-info { margin-top: 8px; padding-top: 8px; border-top: 1px solid #f3f4f6; }
+    .vehicle-name { font-size: 13px; font-weight: 600; color: #1a1a2e; }
+    .vehicle-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+
+    .btn { width: 100%; padding: 10px; border-radius: 8px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s; margin-bottom: 8px; }
+    .btn-primary { background: #6366f1; color: white; }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-primary:disabled { background: #c4b5fd; cursor: not-allowed; }
+    .btn-secondary { background: white; color: #6366f1; border: 1.5px solid #6366f1; }
+    .btn-secondary:hover { background: #eef2ff; }
+    .btn-fb { background: #1877f2; color: white; }
+    .btn-fb:hover { background: #1464d8; }
+
+    .output { background: white; border-radius: 10px; border: 1px solid #e5e7eb; overflow: hidden; margin-bottom: 8px; }
+    .output-header { padding: 8px 12px; background: #f9fafb; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center; }
+    .output-label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
+    .copy-btn { font-size: 11px; color: #6366f1; background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+    .copy-btn:hover { background: #eef2ff; }
+    .output-body { padding: 10px 12px; font-size: 12px; line-height: 1.6; color: #374151; max-height: 80px; overflow-y: auto; }
+    .output-body.title { font-weight: 600; font-size: 13px; max-height: none; }
+
+    .error { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #dc2626; margin-bottom: 8px; }
+    .hint { font-size: 11px; color: #9ca3af; text-align: center; padding: 4px 0; }
+
+    .open-btn { font-size: 12px; color: #6366f1; background: none; border: none; cursor: pointer; text-decoration: underline; width: 100%; text-align: center; padding: 4px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">P</div>
+    <div>
+      <div class="logo-text">Postify</div>
+      <div class="logo-sub">AI Listing Generator</div>
+    </div>
+  </div>
+
+  <div class="body">
+    <!-- Status -->
+    <div class="status-card">
+      <div class="status-row">
+        <div class="dot" id="status-dot"></div>
+        <span id="status-text">Checking page...</span>
+      </div>
+      <div class="vehicle-info" id="vehicle-info" style="display:none">
+        <div class="vehicle-name" id="v-name"></div>
+        <div class="vehicle-meta" id="v-meta"></div>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div class="error" id="error-box" style="display:none"></div>
+
+    <!-- Generate button -->
+    <button class="btn btn-primary" id="generate-btn" onclick="generate()">
+      ✨ Generate Listing
+    </button>
+
+    <!-- Output -->
+    <div id="output" style="display:none">
+      <div class="output">
+        <div class="output-header">
+          <span class="output-label">FB Title</span>
+          <button class="copy-btn" onclick="copyField('title')">Copy</button>
+        </div>
+        <div class="output-body title" id="out-title"></div>
+      </div>
+
+      <div class="output">
+        <div class="output-header">
+          <span class="output-label">Description</span>
+          <button class="copy-btn" onclick="copyField('description')">Copy</button>
+        </div>
+        <div class="output-body" id="out-desc"></div>
+      </div>
+
+      <div class="output">
+        <div class="output-header">
+          <span class="output-label">Highlights</span>
+          <button class="copy-btn" onclick="copyField('highlights')">Copy</button>
+        </div>
+        <div class="output-body" id="out-highlights"></div>
+      </div>
+
+      <button class="btn btn-secondary" onclick="copyAll()">📋 Copy Full Listing</button>
+      <button class="btn btn-fb" onclick="openFacebook()">Post to Facebook Marketplace</button>
+      <button class="open-btn" onclick="openPostify()">Open in Postify ↗</button>
+    </div>
+
+    <p class="hint" id="hint-text"></p>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

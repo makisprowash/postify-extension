@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Postify</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f4f5f7;
+      color: #1a1a2e;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .logo-row { display: flex; align-items: center; gap: 10px; }
+    .logo {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 800; font-size: 16px;
+      flex-shrink: 0;
+    }
+    .brand { color: white; font-size: 15px; font-weight: 700; }
+    .tagline { color: rgba(255,255,255,0.55); font-size: 10px; margin-top: 1px; }
+    .help-btn {
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 7px;
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .help-btn:hover { background: #dc2626; }
+
+    /* ── VDP Banner ── */
+    .vdp-banner {
+      background: #f0fdf4;
+      border-bottom: 1px solid #bbf7d0;
+      padding: 8px 16px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .vdp-banner.show { display: flex; }
+    .vdp-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #22c55e; flex-shrink: 0;
+      box-shadow: 0 0 0 3px rgba(34,197,94,0.2);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 3px rgba(34,197,94,0.2); }
+      50% { box-shadow: 0 0 0 6px rgba(34,197,94,0.1); }
+    }
+    .vdp-text { font-size: 11px; color: #15803d; font-weight: 600; flex: 1; }
+    .vdp-gen-btn {
+      background: #22c55e; color: white; border: none;
+      border-radius: 6px; padding: 5px 12px;
+      font-size: 11px; font-weight: 700; cursor: pointer;
+    }
+    .vdp-gen-btn:hover { background: #16a34a; }
+
+    /* ── Stats ── */
+    .stats-bar {
+      display: flex;
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+      flex-shrink: 0;
+    }
+    .stat {
+      flex: 1; padding: 10px 0; text-align: center;
+      border-right: 1px solid #e5e7eb;
+    }
+    .stat:last-child { border-right: none; }
+    .stat-num { font-size: 18px; font-weight: 800; color: #1e1b4b; line-height: 1; }
+    .stat-label {
+      font-size: 9px; color: #9ca3af; font-weight: 600;
+      margin-top: 3px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    /* ── Controls ── */
+    .controls {
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .control-label {
+      font-size: 10px; font-weight: 700; color: #6b7280;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .fb-groups-select {
+      width: 100%; padding: 8px 10px;
+      border: 1px solid #e5e7eb; border-radius: 8px;
+      font-size: 12px; color: #374151; background: #f9fafb;
+      cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+    }
+    .fb-groups-select:focus { outline: none; border-color: #6366f1; background: white; }
+
+    .search-input {
+      width: 100%; padding: 8px 10px;
+      border: 1px solid #e5e7eb; border-radius: 8px;
+      font-size: 12px; color: #374151; background: #f9fafb;
+    }
+    .search-input:focus { outline: none; border-color: #6366f1; background: white; }
+
+    /* ── Vehicle List ── */
+    .vehicle-list {
+      flex: 1;
+      overflow-y: auto;
+      background: #f4f5f7;
+    }
+    .vehicle-list::-webkit-scrollbar { width: 4px; }
+    .vehicle-list::-webkit-scrollbar-track { background: #f1f5f9; }
+    .vehicle-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+    .vehicle-card {
+      background: white;
+      margin: 6px 10px;
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid #e5e7eb;
+      transition: box-shadow 0.15s;
+    }
+    .vehicle-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .vehicle-card.is-posted { border-left: 3px solid #22c55e; }
+
+    .thumb-wrap { position: relative; flex-shrink: 0; }
+    .thumb {
+      width: 56px; height: 44px;
+      border-radius: 7px; object-fit: cover;
+      background: #e0e7ff;
+      border: 1px solid #e5e7eb;
+    }
+    .thumb-placeholder {
+      width: 56px; height: 44px;
+      border-radius: 7px;
+      background: linear-gradient(135deg, #e0e7ff, #ede9fe);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      border: 1px solid #e5e7eb;
+    }
+    .posted-badge {
+      position: absolute; top: -4px; right: -4px;
+      background: #22c55e; color: white;
+      border-radius: 50%; width: 16px; height: 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700;
+      border: 2px solid white;
+    }
+
+    .vinfo { flex: 1; min-width: 0; }
+    .vname {
+      font-size: 12px; font-weight: 700; color: #111827;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .vmeta {
+      font-size: 10px; color: #9ca3af; margin-top: 1px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .vprice { font-size: 12px; font-weight: 800; color: #1e1b4b; margin-top: 3px; }
+
+    .actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+    .btn-post {
+      background: #6366f1; color: white; border: none;
+      border-radius: 6px; padding: 6px 12px;
+      font-size: 10px; font-weight: 700; cursor: pointer;
+      white-space: nowrap; transition: background 0.15s;
+      min-width: 72px; text-align: center;
+    }
+    .btn-post:hover { background: #4f46e5; }
+    .btn-repost {
+      background: #fee2e2; color: #dc2626; border: none;
+      border-radius: 6px; padding: 6px 12px;
+      font-size: 10px; font-weight: 700; cursor: pointer;
+      white-space: nowrap; transition: background 0.15s;
+      min-width: 72px; text-align: center;
+    }
+    .btn-repost:hover { background: #fecaca; }
+
+    /* ── Loading ── */
+    .loading-state {
+      padding: 40px 20px; text-align: center; color: #9ca3af;
+    }
+    .spinner {
+      width: 28px; height: 28px;
+      border: 3px solid #e5e7eb;
+      border-top-color: #6366f1;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 12px; }
+
+    /* ── Not logged in ── */
+    .auth-state {
+      padding: 32px 20px; text-align: center;
+    }
+    .auth-icon { font-size: 40px; margin-bottom: 12px; }
+    .auth-title { font-size: 14px; font-weight: 700; color: #1e1b4b; margin-bottom: 6px; }
+    .auth-sub { font-size: 11px; color: #6b7280; margin-bottom: 16px; line-height: 1.5; }
+    .btn-login {
+      background: #6366f1; color: white; border: none;
+      border-radius: 8px; padding: 10px 24px;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      width: 100%;
+    }
+    .btn-login:hover { background: #4f46e5; }
+
+    /* ── Footer ── */
+    .footer {
+      background: white;
+      border-top: 1px solid #e5e7eb;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .footer a { font-size: 11px; color: #6366f1; text-decoration: none; font-weight: 600; }
+    .footer a:hover { text-decoration: underline; }
+    .footer-right { font-size: 10px; color: #9ca3af; }
+
+    .empty-state {
+      padding: 32px 20px; text-align: center; color: #9ca3af; font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo-row">
+      <div class="logo">P</div>
+      <div>
+        <div class="brand">Postify</div>
+        <div class="tagline">Auto Lister</div>
+      </div>
+    </div>
+    <button class="help-btn" onclick="window.open('https://postify-ivory-gamma.vercel.app', '_blank')">
+      Need Help?
+    </button>
+  </div>
+
+  <!-- VDP Banner -->
+  <div class="vdp-banner" id="vdp-banner">
+    <div class="vdp-dot"></div>
+    <span class="vdp-text">Vehicle page detected!</span>
+    <button class="vdp-gen-btn" id="vdp-gen-btn">Generate ✨</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat">
+      <div class="stat-num" id="stat-total">—</div>
+      <div class="stat-label">Total</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="stat-listed">—</div>
+      <div class="stat-label">Listed</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="stat-remaining">—</div>
+      <div class="stat-label">Remaining</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div>
+      <div class="control-label">FB Group</div>
+      <select class="fb-groups-select" id="fb-group">
+        <option value="">— Select FB Group —</option>
+        <option value="marketplace">Facebook Marketplace</option>
+        <option value="local">Local Cars For Sale</option>
+        <option value="sacramento">Sacramento Cars &amp; Trucks</option>
+        <option value="folsom">Folsom Area Buy &amp; Sell</option>
+      </select>
+    </div>
+    <input class="search-input" id="search-input" type="text" placeholder="🔍  Search VIN, make, model…"/>
+  </div>
+
+  <!-- Vehicle List -->
+  <div class="vehicle-list" id="vehicle-list">
+    <div class="loading-state" id="loading-state">
+      <div class="spinner"></div>
+      <div class="loading-text">Loading inventory…</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <a href="https://postify-ivory-gamma.vercel.app" target="_blank">Open Dashboard ↗</a>
+    <span class="footer-right">Postify v1.1</span>
+  </div>
+
+<script>
+  const SUPABASE_URL = 'https://xfkunytzqduvgzauywtq.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhma3VueXR6cWR1dmd6YXV5d3RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NTMzMDEsImV4cCI6MjA5NjMyOTMwMX0.2YiBPd28h8lldC04gh72-2f27n7Fu4RTqtxeWvlas_4';
+  const APP_URL = 'https://postify-ivory-gamma.vercel.app';
+
+  let allVehicles = [];
+  let currentVdpUrl = null;
+
+  // ── Listen for VDP detection from background ──
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === 'VDP_DETECTED') {
+      currentVdpUrl = msg.url;
+      document.getElementById('vdp-banner').classList.add('show');
+      document.getElementById('vdp-gen-btn').onclick = () => {
+        window.open(`${APP_URL}?url=${encodeURIComponent(currentVdpUrl)}`, '_blank');
+      };
+    }
+  });
+
+  // ── Check current tab on load ──
+  chrome.runtime.sendMessage({ type: 'GET_CURRENT_TAB' }, (res) => {
+    if (res?.tab?.url) {
+      const url = res.tab.url;
+      const isVDP =
+        /\/(used|new|inventory|vehicle|vdp|details|listing)\//i.test(url) ||
+        /\d{4}[-_](ford|ram|jeep|dodge|chrysler|chevrolet|gmc|toyota|honda|bmw|mercedes|audi|hyundai|kia|nissan|subaru|volkswagen|mazda|lexus|acura|infiniti|cadillac|buick|lincoln)/i.test(url) ||
+        /vin[=/][A-HJ-NPR-Z0-9]{17}/i.test(url);
+      if (isVDP) {
+        currentVdpUrl = url;
+        document.getElementById('vdp-banner').classList.add('show');
+        document.getElementById('vdp-gen-btn').onclick = () => {
+          window.open(`${APP_URL}?url=${encodeURIComponent(url)}`, '_blank');
+        };
+      }
+    }
+  });
+
+  // ── Load inventory ──
+  async function loadInventory() {
+    try {
+      const stored = await new Promise(r => chrome.storage.local.get(['postify_session'], r));
+      const token = stored.postify_session?.access_token;
+
+      const headers = {
+        'apikey': SUPABASE_KEY,
+        'Content-Type': 'application/json',
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/vehicles?select=id,vin,year,make,model,trim,mileage,price,photo_url,listing_status&order=created_at.desc&limit=200`,
+        { headers }
+      );
+
+      if (!res.ok) throw new Error('fetch failed');
+      const data = await res.json();
+
+      if (!Array.isArray(data) || data.length === 0) throw new Error('empty');
+      allVehicles = data;
+      updateStats();
+      renderVehicles(allVehicles);
+    } catch (e) {
+      // Use sample data if not logged in or no vehicles yet
+      allVehicles = getSamples();
+      updateStats();
+      renderVehicles(allVehicles);
+    }
+  }
+
+  function getSamples() {
+    return [
+      { id:1, vin:'3C6RR6NT0HG155092', year:2018, make:'RAM',        model:'1500',          trim:'Big Horn',    mileage:90833,  price:22988, listing_status:'posted' },
+      { id:2, vin:'1GT49REY0LF104001', year:2020, make:'GMC',        model:'Sierra 2500HD', trim:'SLE',         mileage:105602, price:56873, listing_status:null },
+      { id:3, vin:'1FT7W2BT2JEC90083', year:2018, make:'Ford',       model:'F-250',         trim:'Super Duty',  mileage:95454,  price:43756, listing_status:null },
+      { id:4, vin:'1FT7W2BT2HEC30311', year:2017, make:'Ford',       model:'F-250',         trim:'Super Duty',  mileage:133391, price:49988, listing_status:'posted' },
+      { id:5, vin:'1FT7W2BT4KES26004', year:2019, make:'Ford',       model:'F-250',         trim:'Super Duty',  mileage:68793,  price:62970, listing_status:null },
+      { id:6, vin:'3GCUYGE00BLZ37848', year:2020, make:'Chevrolet',  model:'Silverado 1500',trim:'LTZ',         mileage:112303, price:37698, listing_status:null },
+      { id:7, vin:'1FT7W2BT2NEC66680', year:2022, make:'Ford',       model:'F-250',         trim:'Super Duty',  mileage:56800,  price:60877, listing_status:null },
+      { id:8, vin:'5YFBURHE0HP123456', year:2017, make:'Toyota',     model:'Camry',         trim:'SE',          mileage:74200,  price:16988, listing_status:null },
+    ];
+  }
+
+  function updateStats() {
+    const total = allVehicles.length;
+    const listed = allVehicles.filter(v => v.listing_status === 'posted').length;
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-listed').textContent = listed;
+    document.getElementById('stat-remaining').textContent = total - listed;
+  }
+
+  function renderVehicles(vehicles) {
+    const list = document.getElementById('vehicle-list');
+    document.getElementById('loading-state')?.remove();
+
+    if (!vehicles.length) {
+      list.innerHTML = '<div class="empty-state">No vehicles found.</div>';
+      return;
+    }
+
+    list.innerHTML = vehicles.map(v => {
+      const isPosted = v.listing_status === 'posted';
+      const name = `${v.year} ${v.make} ${v.model}`;
+      const vinShort = v.vin ? v.vin.slice(-8) : 'N/A';
+      const miles = Number(v.mileage || 0).toLocaleString();
+      const price = v.price ? `$${Number(v.price).toLocaleString()}` : 'Call for Price';
+
+      const thumbHtml = v.photo_url
+        ? `<img class="thumb" src="${v.photo_url}" alt="${name}" onerror="this.parentElement.innerHTML='<div class=\\'thumb-placeholder\\'>🚗</div>'"/>`
+        : `<div class="thumb-placeholder">🚗</div>`;
+
+      const badgeHtml = isPosted ? `<div class="posted-badge">✓</div>` : '';
+
+      const actionHtml = isPosted
+        ? `<button class="btn-post" style="background:#22c55e;cursor:default">✓ Posted</button>
+           <button class="btn-repost" data-id="${v.id}" data-vin="${v.vin}">Post Again</button>`
+        : `<button class="btn-post" data-id="${v.id}" data-vin="${v.vin}" data-name="${name}">Post</button>`;
+
+      return `
+        <div class="vehicle-card ${isPosted ? 'is-posted' : ''}" data-vin="${v.vin}">
+          <div class="thumb-wrap">
+            ${thumbHtml}
+            ${badgeHtml}
+          </div>
+          <div class="vinfo">
+            <div class="vname">${name}${v.trim ? ' ' + v.trim : ''}</div>
+            <div class="vmeta">${vinShort} · ${miles} mi</div>
+            <div class="vprice">${price}</div>
+          </div>
+          <div class="actions">${actionHtml}</div>
+        </div>
+      `;
+    }).join('');
+
+    // Attach listeners
+    list.querySelectorAll('.btn-post[data-id]').forEach(btn => {
+      if (btn.style.background) return; // skip the "Posted" green ones
+      btn.addEventListener('click', () => {
+        window.open(`${APP_URL}?vehicle_id=${btn.dataset.id}&vin=${btn.dataset.vin}`, '_blank');
+      });
+    });
+    list.querySelectorAll('.btn-repost').forEach(btn => {
+      btn.addEventListener('click', () => {
+        window.open(`${APP_URL}?vehicle_id=${btn.dataset.id}&vin=${btn.dataset.vin}&repost=true`, '_blank');
+      });
+    });
+  }
+
+  // ── Search ──
+  document.getElementById('search-input').addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase().trim();
+    if (!q) { renderVehicles(allVehicles); return; }
+    renderVehicles(allVehicles.filter(v =>
+      `${v.year} ${v.make} ${v.model} ${v.trim} ${v.vin}`.toLowerCase().includes(q)
+    ));
+  });
+
+  // ── Init ──
+  loadInventory();
+</script>
+</body>
+</html>

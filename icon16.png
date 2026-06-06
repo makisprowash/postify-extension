@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Postify — AI Listing Generator",
+  "version": "1.0.0",
+  "description": "One-click Facebook Marketplace listing generator for dealership vehicle pages.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Postify — Generate Listing"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*/*", "http://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

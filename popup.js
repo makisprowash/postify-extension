@@ -1,168 +1,51 @@
-const SCRAPER = "https://autolister-scraper-production.up.railway.app";
-const POSTIFY_URL = "https://postify-ivory-gamma.vercel.app";
-
-let currentContent = null;
-let currentVehicle = null;
-
-// ─── INIT ─────────────────────────────────────────────────────────────────────
-document.addEventListener("DOMContentLoaded", async () => {
-  setStatus("gray", "Checking page...");
-
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const url = tab.url;
-
-    const isVDP = /\/(used|new|inventory|vehicle|vdp|details|listing)\//i.test(url) ||
-                  /\d{4}[-_](ford|ram|jeep|dodge|chrysler|chevrolet|gmc|toyota|honda|bmw|mercedes|audi|hyundai|kia|nissan|subaru|volkswagen|mazda|lexus|acura|infiniti|cadillac|buick|lincoln)/i.test(url) ||
-                  /vin[=/][A-HJ-NPR-Z0-9]{17}/i.test(url);
-
-    if (!isVDP) {
-      setStatus("gray", "Not a vehicle page");
-      document.getElementById("generate-btn").disabled = true;
-      document.getElementById("hint-text").textContent = "Navigate to a vehicle listing page to use Postify.";
-      return;
-    }
-
-    setStatus("green", "Vehicle page detected!");
-    document.getElementById("hint-text").textContent = url.replace(/^https?:\/\//, "").substring(0, 50) + "...";
-
-    const titleMatch = tab.title?.match(/(\d{4})\s+([A-Za-z]+)\s+([A-Za-z\s]+)/);
-    if (titleMatch) {
-      document.getElementById("vehicle-info").style.display = "block";
-      document.getElementById("v-name").textContent = `${titleMatch[1]} ${titleMatch[2]} ${titleMatch[3].trim().split(" ").slice(0,2).join(" ")}`;
-      document.getElementById("v-meta").textContent = "Ready to generate listing";
-    }
-
-  } catch (e) {
-    setStatus("gray", "Could not detect page");
-  }
-});
-
-// ─── OPEN IN POSTIFY (fixes popup closing issue) ──────────────────────────────
-async function openInPostify() {
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const url = encodeURIComponent(tab.url);
-    chrome.tabs.create({ url: `${POSTIFY_URL}?url=${url}&autoload=1` });
-  } catch(e) {
-    showError("Could not open Postify: " + e.message);
-  }
-}
-
-// ─── GENERATE (used when popup stays open) ────────────────────────────────────
-async function generate() {
-  const btn = document.getElementById("generate-btn");
-  btn.disabled = true;
-  btn.textContent = "⏳ Scraping vehicle...";
-  setStatus("amber", "Extracting vehicle data...");
-  hideError();
-  document.getElementById("output").style.display = "none";
-
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const url = tab.url;
-
-    const scrapeRes = await fetch(`${SCRAPER}/scrape`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url })
-    });
-
-    if (!scrapeRes.ok) throw new Error(`Scrape failed: ${scrapeRes.status}`);
-    const vehicle = await scrapeRes.json();
-    currentVehicle = vehicle;
-
-    const name = `${vehicle.year||""} ${vehicle.make||""} ${vehicle.model||""} ${vehicle.trim||""}`.trim();
-    document.getElementById("vehicle-info").style.display = "block";
-    document.getElementById("v-name").textContent = name || "Vehicle detected";
-    document.getElementById("v-meta").textContent = [
-      vehicle.mileage ? `${Number(vehicle.mileage).toLocaleString()} mi` : "",
-      vehicle.price ? `$${Number(vehicle.price).toLocaleString()}` : "",
-      vehicle.photos?.length ? `${vehicle.photos.length} photos` : ""
-    ].filter(Boolean).join(" · ");
-
-    btn.textContent = "✨ AI writing listing...";
-    setStatus("amber", "AI writing your listing...");
-
-    const genRes = await fetch(`${SCRAPER}/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vehicle })
-    });
-
-    if (!genRes.ok) throw new Error(`Generation failed: ${genRes.status}`);
-    const content = await genRes.json();
-    currentContent = content;
-
-    document.getElementById("out-title").textContent = content.title || "";
-    document.getElementById("out-desc").textContent = content.description || "";
-    document.getElementById("out-highlights").textContent = content.highlights?.map(h => `• ${h}`).join("\n") || "";
-    document.getElementById("output").style.display = "block";
-
-    setStatus("green", "Listing ready!");
-    btn.textContent = "↺ Regenerate";
-    btn.disabled = false;
-    document.getElementById("hint-text").textContent = "";
-
-    await chrome.storage.local.set({ lastVehicle: vehicle, lastContent: content });
-
-  } catch (e) {
-    showError(e.message);
-    setStatus("gray", "Something went wrong");
-    btn.textContent = "✨ Generate Listing";
-    btn.disabled = false;
-  }
-}
-
-// ─── COPY ─────────────────────────────────────────────────────────────────────
-function copyField(field) {
-  if (!currentContent) return;
-  let text = "";
-  if (field === "title") text = currentContent.title || "";
-  if (field === "description") text = currentContent.description || "";
-  if (field === "highlights") text = currentContent.highlights?.map(h => `• ${h}`).join("\n") || "";
-  navigator.clipboard.writeText(text);
-  const btn = event.target;
-  btn.textContent = "Copied!";
-  setTimeout(() => btn.textContent = "Copy", 1500);
-}
-
-function copyAll() {
-  if (!currentContent) return;
-  const c = currentContent;
-  const full = [c.title,"",c.description,"",c.highlights?.map(h=>`• ${h}`).join("\n"),"",c.financing,"",c.cta].join("\n");
-  navigator.clipboard.writeText(full);
-  const btn = event.target;
-  btn.textContent = "✓ Copied!";
-  setTimeout(() => btn.textContent = "📋 Copy Full Listing", 1500);
-}
-
-function openFacebook() {
-  if (currentContent) {
-    const c = currentContent;
-    const full = [c.title,"",c.description,"",c.highlights?.map(h=>`• ${h}`).join("\n"),"",c.financing,"",c.cta].join("\n");
-    navigator.clipboard.writeText(full);
-  }
-  chrome.tabs.create({ url: "https://www.facebook.com/marketplace/create/vehicle" });
-}
-
-function openPostify() {
-  chrome.tabs.create({ url: POSTIFY_URL });
-}
-
-function setStatus(color, text) {
-  const dot = document.getElementById("status-dot");
-  const txt = document.getElementById("status-text");
-  dot.className = `dot dot-${color}`;
-  txt.textContent = text;
-}
-
-function showError(msg) {
-  const el = document.getElementById("error-box");
-  el.style.display = "block";
-  el.textContent = msg;
-}
-
-function hideError() {
-  document.getElementById("error-box").style.display = "none";
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Postify</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; width: 340px; background: #f8f9fb; color: #1a1a2e; }
+    .header { background: white; padding: 14px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #e5e7eb; }
+    .logo { width: 32px; height: 32px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px; }
+    .logo-text { font-size: 16px; font-weight: 600; }
+    .logo-sub { font-size: 11px; color: #6b7280; }
+    .body { padding: 14px; }
+    .status-card { background: white; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; border: 1px solid #e5e7eb; }
+    .status-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: #9ca3af; }
+    .dot-green { background: #22c55e !important; }
+    .dot-amber { background: #f59e0b !important; }
+    .vehicle-info { margin-top: 8px; padding-top: 8px; border-top: 1px solid #f3f4f6; display: none; }
+    .vehicle-name { font-size: 13px; font-weight: 600; }
+    .vehicle-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .btn { width: 100%; padding: 11px; border-radius: 8px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; margin-bottom: 8px; background: #6366f1; color: white; }
+    .btn:hover { background: #4f46e5; }
+    .hint { font-size: 11px; color: #9ca3af; text-align: center; padding: 4px 0; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">P</div>
+    <div>
+      <div class="logo-text">Postify</div>
+      <div class="logo-sub">AI Listing Generator</div>
+    </div>
+  </div>
+  <div class="body">
+    <div class="status-card">
+      <div class="status-row">
+        <div class="dot" id="status-dot"></div>
+        <span id="status-text">Checking page...</span>
+      </div>
+      <div class="vehicle-info" id="vehicle-info">
+        <div class="vehicle-name" id="v-name"></div>
+        <div class="vehicle-meta" id="v-meta">Ready to generate listing</div>
+      </div>
+    </div>
+    <button class="btn" id="generate-btn">✨ Generate Listing in Postify</button>
+    <p class="hint" id="hint-text"></p>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

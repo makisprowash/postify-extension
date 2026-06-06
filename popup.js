@@ -12,7 +12,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     const url = tab.url;
 
-    // Check if it looks like a vehicle detail page
     const isVDP = /\/(used|new|inventory|vehicle|vdp|details|listing)\//i.test(url) ||
                   /\d{4}[-_](ford|ram|jeep|dodge|chrysler|chevrolet|gmc|toyota|honda|bmw|mercedes|audi|hyundai|kia|nissan|subaru|volkswagen|mazda|lexus|acura|infiniti|cadillac|buick|lincoln)/i.test(url) ||
                   /vin[=/][A-HJ-NPR-Z0-9]{17}/i.test(url);
@@ -20,14 +19,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!isVDP) {
       setStatus("gray", "Not a vehicle page");
       document.getElementById("generate-btn").disabled = true;
-      document.getElementById("hint-text").textContent = "Navigate to a vehicle listing page to generate a listing.";
+      document.getElementById("hint-text").textContent = "Navigate to a vehicle listing page to use Postify.";
       return;
     }
 
     setStatus("green", "Vehicle page detected!");
     document.getElementById("hint-text").textContent = url.replace(/^https?:\/\//, "").substring(0, 50) + "...";
 
-    // Try to get quick info from page title
     const titleMatch = tab.title?.match(/(\d{4})\s+([A-Za-z]+)\s+([A-Za-z\s]+)/);
     if (titleMatch) {
       document.getElementById("vehicle-info").style.display = "block";
@@ -40,7 +38,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-// ─── GENERATE ─────────────────────────────────────────────────────────────────
+// ─── OPEN IN POSTIFY (fixes popup closing issue) ──────────────────────────────
+async function openInPostify() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const url = encodeURIComponent(tab.url);
+    chrome.tabs.create({ url: `${POSTIFY_URL}?url=${url}&autoload=1` });
+  } catch(e) {
+    showError("Could not open Postify: " + e.message);
+  }
+}
+
+// ─── GENERATE (used when popup stays open) ────────────────────────────────────
 async function generate() {
   const btn = document.getElementById("generate-btn");
   btn.disabled = true;
@@ -53,7 +62,6 @@ async function generate() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     const url = tab.url;
 
-    // Step 1: Scrape
     const scrapeRes = await fetch(`${SCRAPER}/scrape`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -64,7 +72,6 @@ async function generate() {
     const vehicle = await scrapeRes.json();
     currentVehicle = vehicle;
 
-    // Show vehicle info
     const name = `${vehicle.year||""} ${vehicle.make||""} ${vehicle.model||""} ${vehicle.trim||""}`.trim();
     document.getElementById("vehicle-info").style.display = "block";
     document.getElementById("v-name").textContent = name || "Vehicle detected";
@@ -77,7 +84,6 @@ async function generate() {
     btn.textContent = "✨ AI writing listing...";
     setStatus("amber", "AI writing your listing...");
 
-    // Step 2: Generate
     const genRes = await fetch(`${SCRAPER}/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -88,7 +94,6 @@ async function generate() {
     const content = await genRes.json();
     currentContent = content;
 
-    // Show output
     document.getElementById("out-title").textContent = content.title || "";
     document.getElementById("out-desc").textContent = content.description || "";
     document.getElementById("out-highlights").textContent = content.highlights?.map(h => `• ${h}`).join("\n") || "";
@@ -99,7 +104,6 @@ async function generate() {
     btn.disabled = false;
     document.getElementById("hint-text").textContent = "";
 
-    // Save to storage for Postify web app
     await chrome.storage.local.set({ lastVehicle: vehicle, lastContent: content });
 
   } catch (e) {
@@ -118,7 +122,6 @@ function copyField(field) {
   if (field === "description") text = currentContent.description || "";
   if (field === "highlights") text = currentContent.highlights?.map(h => `• ${h}`).join("\n") || "";
   navigator.clipboard.writeText(text);
-
   const btn = event.target;
   btn.textContent = "Copied!";
   setTimeout(() => btn.textContent = "Copy", 1500);
@@ -127,15 +130,8 @@ function copyField(field) {
 function copyAll() {
   if (!currentContent) return;
   const c = currentContent;
-  const full = [
-    c.title, "",
-    c.description, "",
-    c.highlights?.map(h => `• ${h}`).join("\n"), "",
-    c.financing, "",
-    c.cta
-  ].join("\n");
+  const full = [c.title,"",c.description,"",c.highlights?.map(h=>`• ${h}`).join("\n"),"",c.financing,"",c.cta].join("\n");
   navigator.clipboard.writeText(full);
-
   const btn = event.target;
   btn.textContent = "✓ Copied!";
   setTimeout(() => btn.textContent = "📋 Copy Full Listing", 1500);
@@ -154,7 +150,6 @@ function openPostify() {
   chrome.tabs.create({ url: POSTIFY_URL });
 }
 
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
 function setStatus(color, text) {
   const dot = document.getElementById("status-dot");
   const txt = document.getElementById("status-text");

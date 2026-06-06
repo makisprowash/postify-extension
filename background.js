@@ -21,7 +21,6 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (isVDP) {
     chrome.action.setBadgeText({ text: "GO", tabId });
     chrome.action.setBadgeBackgroundColor({ color: "#6366f1", tabId });
-    // Notify side panel that a VDP was detected
     chrome.runtime.sendMessage({ type: "VDP_DETECTED", url: tab.url }).catch(() => {});
   } else {
     chrome.action.setBadgeText({ text: "", tabId });
